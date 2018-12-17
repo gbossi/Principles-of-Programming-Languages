@@ -1,11 +1,13 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <cstdint>
 
 
 //define the default stack size 2^16
 
-#define DEFAULT_STACK_SIZE 4096
+#define MAX_PRG    4096
+#define MAX_STACK  1024
 #define HLT 0x00
 #define JMP 0x01
 #define JNZ 0x02
@@ -35,19 +37,23 @@
 
 
 typedef unsigned char byte;
-typedef byte[2] word;
+typedef uint32_t word;
+
 
 using namespace std;
 
 class VirtualMachine {
 private:
-    char stack[DEFAULT_STACK_SIZE];
+    byte program[MAX_PRG];
+    word stack[MAX_STACK];
+
     bool running;
     int ip;
     int sp;
+   
 public:
     VirtualMachine();
-    void halt();
+    void halt(); 
     void jump(byte,byte);
     void jnz(byte,byte);
     void dup(); // I don't know
@@ -62,16 +68,49 @@ public:
     void mod();
     void eq();
 
-    bool isRunning();
+
+    int prepare(const char* filename){
+        FILE* fin= fopen(filename,"rb");
+
+        if (!fin)
+            return 1;
+    
+        fseek(fin,0,SEEK_END);
+        long fsize = ftell(fin);
+
+        if(fsize>=MAX_PRG)
+            return 1;
+
+        fseek(fin,0,SEEK_SET);
+        fread(program,fsize,1,fin);
+        fclose(fin);
+        program[fsize]=0x00;
+
+        return 0;
+    }
+
+
+    void execute(){
+        running=true;        
+        byte op;
+        do{
+            op = program[ip];
+            printf("%04x\n", op);
+            switch(op){
+                case HLT: halt();break;
+                } 
+             ip++;
+        }while(running);
+    }
 };
 
 
 
 VirtualMachine::VirtualMachine(){
     stack[0]=0;
-    running=true;    
+    running=false;    
     ip=0;
-    sp=4;
+    sp=0;
 }
 
 
@@ -84,46 +123,23 @@ void VirtualMachine::halt(){
 void VirtualMachine::jump(byte a ,byte b){
     ip++;
     int offset= (int)a + (int) b; ///how to pick the sign
-    ip += offset;
+    ip = offset;
     return;
 }
 
 
-bool VirtualMachine::isRunning(){
-    return running;
-}
-
-byte getb(FILE* fin){
-    return (byte) fgetc(fin);
-}
-
 int main(int argc,char *argv[]) {
-    VirtualMachine vm;
-    byte op;
-
     if(argc!=2){
-        cout << "Please write the name of the input file\n";
+        printf("Please write the name of the input file\n");
         return 0;
     }
-
-    FILE* fin=fopen(argv[1], "r");
-
-    if (!fin){
-        perror ("Error opening file\n");
-        return 0;
+   
+    VirtualMachine vm;
+    switch(vm.prepare(argv[1])){
+        case 0: vm.execute();break;
+        case 1: perror("Error in Filename");break;
+        case 2: perror("Error file exceeds preallocated space");break;
     }
-    
 
-    do{
-        op=getb(fin);
-        printf("%04x-",op);
-        printf("%04x||",HLT);
-        switch(op){
-            case HLT: vm.halt();break;
-            case JMP: vm.jump(getb (fin),getb (fin));break; 
-
-        } 
-    }while(vm.isRunning() && op != EOF);
-
-    fclose(fin);
+    return 0;
 }
