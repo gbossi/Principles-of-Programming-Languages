@@ -2,7 +2,7 @@
 #include <string>
 #include <fstream>
 #include <cstdint>
-
+#include <chrono>
 
 //define the default stack size 2^16
 
@@ -45,28 +45,42 @@ using namespace std;
 class VirtualMachine {
 private:
     byte program[MAX_PRG];
-    word stack[MAX_STACK];
+    byte stack[MAX_STACK];
 
     bool running;
     int ip;
     int sp;
-   
-public:
-    VirtualMachine();
-    void halt(); 
-    void jump(byte,byte);
-    void jnz(byte,byte);
-    void dup(); // I don't know
-    void swap(); //I don't know
+    int pc;
+    chrono::steady_clock::time_point time_start;
+
+    void halt();
+    void jump();
+    void jnz();
+    void dup(); 
+    void swap(); 
     void drop();
-    void push1(byte);
-    void push2(byte,byte);
-    void push4(byte,byte,byte,byte);
+    void push1();
+    void push2();
+    void push4();
     void add();
     void mul();
     void div();
     void mod();
     void eq();
+
+
+    void input();
+    void output();
+    void clock();
+   
+public:
+
+    VirtualMachine(){
+        stack[0]=0;
+        running=false;    
+        ip=-1;
+        sp=-1;
+    }
 
 
     int prepare(const char* filename){
@@ -79,7 +93,7 @@ public:
         long fsize = ftell(fin);
 
         if(fsize>=MAX_PRG)
-            return 1;
+            return 2;
 
         fseek(fin,0,SEEK_SET);
         fread(program,fsize,1,fin);
@@ -91,42 +105,140 @@ public:
 
 
     void execute(){
+        time_start = chrono::steady_clock::now();
         running=true;        
         byte op;
         do{
+            ip++;
             op = program[ip];
             printf("%04x\n", op);
             switch(op){
-                case HLT: halt();break;
-                } 
-             ip++;
+                case HLT:   halt();   break;
+                case JMP:   jump();   break;
+                case JNZ:   jnz();    break;
+                case DUP:   dup();    break;
+                case SWP:   swap();   break;
+                case DRP:   drop();   break;                
+                case PU4:   push4();  break;
+                case PU2:   push2();  break;
+                case PU1:   push1();  break;
+ /*
+                case ADD:   add();    break;           
+                case SUB:   sub();  break;
+                case MUL:   push1();  break;
+                case DIV:   push1();  break;
+                case MOD:   push1();  break;
+                case EQ:    push1();  break;
+                case NE:    push1();  break;
+                case LT:    push1();  break;
+                case GT:   push1();  break;
+                case LE:   push1();  break;
+                case GE:   push1();  break;
+                case NOT:   push1();  break;
+*/
+
+                case INP:   input();  break;
+                case OUT:   output();  break;
+                case CLK:   clock();  break;
+                }
+
         }while(running);
     }
 };
 
 
 
-VirtualMachine::VirtualMachine(){
-    stack[0]=0;
-    running=false;    
-    ip=0;
-    sp=0;
-}
 
 
 void VirtualMachine::halt(){
-    ip++;
     running = false;
     return;
 }
 
-void VirtualMachine::jump(byte a ,byte b){
+void VirtualMachine::jump(){
     ip++;
+    byte a = program[ip];
+    ip++;
+    byte b = program[ip];
+
     int offset= (int)a + (int) b; ///how to pick the sign
     ip = offset;
     return;
 }
 
+void VirtualMachine::jnz(){
+    sp++;
+    byte a =stack[sp];
+
+
+    if(a!=0)
+        jump();
+}
+
+
+void VirtualMachine::dup(){
+    byte a,b;
+    if(stack[sp]!=0)
+        
+        ip++;
+
+}
+
+
+
+void VirtualMachine::swap(){
+    ip++;
+
+}
+
+void VirtualMachine::drop(){
+    ip++;
+
+}
+
+
+void VirtualMachine::push4(){
+    push2();
+    push2();
+    return;
+}
+
+void VirtualMachine::push2(){
+    push1();
+    push1();
+    return;
+}
+
+
+void VirtualMachine::push1(){
+    ip++;
+    byte a = program[ip];
+    sp++;
+    stack[sp]=a;
+    return;
+}
+
+void VirtualMachine::input(){
+    byte a;
+    scanf("%c", &a);
+    sp++;
+    stack[sp]=a;
+    return;
+}
+
+void VirtualMachine::output(){
+    byte a = stack[sp];
+    sp--;
+    printf("%c\n", a);
+}
+
+
+
+void VirtualMachine::clock(){
+    chrono::steady_clock::time_point time_now = chrono::steady_clock::now(); 
+    cout << "Elapsed time since start:" << chrono::duration_cast<chrono::microseconds>(time_now-time_start).count()<< endl;
+
+}
 
 int main(int argc,char *argv[]) {
     if(argc!=2){
