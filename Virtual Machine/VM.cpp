@@ -1,57 +1,19 @@
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <cstdint>
-#include <chrono>
-
-//define the default stack size 2^16
-
-#define MAX_PRG    4096
-#define MAX_STACK  1024
-#define HLT 0x00
-#define JMP 0x01
-#define JNZ 0x02
-#define DUP 0x03
-#define SWP 0x04
-#define DRP 0x05
-#define PU4 0x06
-#define PU2 0x07
-#define PU1 0x08
-#define ADD 0x09
-#define SUB 0x0a
-#define MUL 0x0b
-#define DIV 0x0c
-#define MOD 0x0d
-#define EQ  0x0e
-#define NE  0x0f
-#define LT  0x10
-#define GT  0x11
-#define LE  0x12
-#define GE  0x13
-#define NOT 0x14
-#define AND 0x15
-#define OR  0x16
-#define INP 0x17
-#define OUT 0x18
-#define CLK 0x2a
-
-
-typedef unsigned char byte;
-typedef uint32_t word;
-
+#include "VM.hpp"
 
 using namespace std;
+using namespace std::chrono;
 
 class VirtualMachine {
 private:
     byte program[MAX_PRG];
     byte stack[MAX_STACK];
+    word *wordstack;
 
     bool running;
     int ip;
     int sp;
-    int pc;
-    chrono::steady_clock::time_point time_start;
+    int wp;
+    steady_clock::time_point time_start;
 
     void halt();
     void jump();
@@ -63,12 +25,19 @@ private:
     void push2();
     void push4();
     void add();
+    void sub();
     void mul();
     void div();
     void mod();
     void eq();
-
-
+    void ne();
+    void lt();
+    void gt();
+    void le();
+    void ge();
+    void bit_not();
+    void bit_and();
+    void bit_or();
     void input();
     void output();
     void clock();
@@ -77,9 +46,11 @@ public:
 
     VirtualMachine(){
         stack[0]=0;
+        wordstack = (word*)stack;
         running=false;    
         ip=-1;
         sp=-1;
+        wp=-1;
     }
 
 
@@ -105,7 +76,7 @@ public:
 
 
     void execute(){
-        time_start = chrono::steady_clock::now();
+        time_start = steady_clock::now();
         running=true;        
         byte op;
         do{
@@ -122,23 +93,22 @@ public:
                 case PU4:   push4();  break;
                 case PU2:   push2();  break;
                 case PU1:   push1();  break;
- /*
                 case ADD:   add();    break;           
-                case SUB:   sub();  break;
-                case MUL:   push1();  break;
-                case DIV:   push1();  break;
-                case MOD:   push1();  break;
-                case EQ:    push1();  break;
-                case NE:    push1();  break;
-                case LT:    push1();  break;
-                case GT:   push1();  break;
-                case LE:   push1();  break;
-                case GE:   push1();  break;
-                case NOT:   push1();  break;
-*/
-
+                case SUB:   sub();    break;
+                case MUL:   mul();    break;
+                case DIV:   div();    break;
+                case MOD:   mod();    break;
+                case EQ:    eq();     break;
+                case NE:    ne();     break;
+                case LT:    lt();     break;
+                case GT:    gt();     break;
+                case LE:    le();     break;
+                case GE:    ge();     break;
+                case NOT:   bit_not();break;
+                case AND:   bit_and();break;
+                case OR:    bit_or(); break;
                 case INP:   input();  break;
-                case OUT:   output();  break;
+                case OUT:   output(); break;
                 case CLK:   clock();  break;
                 }
 
@@ -161,39 +131,38 @@ void VirtualMachine::jump(){
     ip++;
     byte b = program[ip];
 
-    int offset= (int)a + (int) b; ///how to pick the sign
+    int offset= (int) a + (int) b * 16;
     ip = offset;
     return;
 }
 
 void VirtualMachine::jnz(){
-    sp++;
-    byte a =stack[sp];
-
-
+    byte a = stack[sp];
+    sp--;
     if(a!=0)
         jump();
 }
 
 
 void VirtualMachine::dup(){
-    byte a,b;
-    if(stack[sp]!=0)
-        
-        ip++;
-
+    ip++;
+    int diff = program[ip];
+    sp++;
+    stack[sp]=stack[diff];
 }
 
 
 
 void VirtualMachine::swap(){
     ip++;
-
+    int diff = program[ip];
+    byte save = stack[diff];
+    stack[diff] = stack[sp];
+    stack[sp]=save;
 }
 
 void VirtualMachine::drop(){
-    ip++;
-
+    sp--;
 }
 
 
@@ -218,6 +187,109 @@ void VirtualMachine::push1(){
     return;
 }
 
+void VirtualMachine::add(){
+    wp = ((sp+1)/4)-1;
+    wordstack[wp]=wordstack[wp]+wordstack[wp-1];
+    sp = sp-4; 
+}
+
+void VirtualMachine::sub(){
+    wp = ((sp+1)/4)-1;
+    wordstack[wp]=wordstack[wp-1]-wordstack[wp];
+    sp = sp-4;
+
+}
+
+void VirtualMachine::mul(){
+    wp = ((sp+1)/4)-1;
+    wordstack[wp]=wordstack[wp-1]*wordstack[wp];
+    sp = sp-4;
+}
+
+void VirtualMachine::div(){
+    wp = ((sp+1)/4)-1;
+    wordstack[wp]=wordstack[wp-1]/wordstack[wp];
+    sp = sp-4;
+
+}
+
+void VirtualMachine::mod(){
+    wp = ((sp+1)/4)-1;
+    wordstack[wp]=wordstack[wp-1]%wordstack[wp];
+    sp = sp-4;
+}
+
+void VirtualMachine::eq(){
+    wp = ((sp+1)/4)-1;
+    if(wordstack[wp-1]==wordstack[wp])
+        wordstack[wp]=1;
+    else
+        wordstack[wp]=0;
+    sp = sp-4;    
+}
+
+void VirtualMachine::ne(){
+    wp = ((sp+1)/4)-1;
+    if(wordstack[wp-1]!=wordstack[wp])
+        wordstack[wp]=1;
+    else
+        wordstack[wp]=0;
+    sp = sp-4;
+}
+
+void VirtualMachine::lt(){
+    wp = ((sp+1)/4)-1;
+    if(wordstack[wp-1]<wordstack[wp])
+        wordstack[wp]=1;
+    else
+        wordstack[wp]=0;
+    sp = sp-4;
+}
+
+void VirtualMachine::gt(){
+    wp = ((sp+1)/4)-1;
+    if(wordstack[wp-1]>wordstack[wp])
+        wordstack[wp]=1;
+    else
+        wordstack[wp]=0;
+    sp = sp-4;
+}
+
+void VirtualMachine::le(){
+    wp = ((sp+1)/4)-1;
+    if(wordstack[wp-1]<=wordstack[wp])
+        wordstack[wp]=1;
+    else
+        wordstack[wp]=0;
+    sp = sp-4;
+}
+
+void VirtualMachine::ge(){
+    wp = ((sp+1)/4)-1;
+    if(wordstack[wp-1]>=wordstack[wp])
+        wordstack[wp]=1;
+    else
+        wordstack[wp]=0;
+    sp = sp-4;
+}
+
+void VirtualMachine::bit_not(){
+    wp = ((sp+1)/4)-1;
+    wordstack[wp]=~wordstack[wp];
+}
+
+void VirtualMachine::bit_and(){
+    wp = ((sp+1)/4)-1;
+    wordstack[wp]=wordstack[wp-1]&wordstack[wp];
+    sp = sp-4;
+}
+
+void VirtualMachine::bit_or(){
+    wp = ((sp+1)/4)-1;
+    wordstack[wp]=wordstack[wp-1]|wordstack[wp];
+    sp = sp-4;
+}
+
 void VirtualMachine::input(){
     byte a;
     scanf("%c", &a);
@@ -229,14 +301,13 @@ void VirtualMachine::input(){
 void VirtualMachine::output(){
     byte a = stack[sp];
     sp--;
-    printf("%c\n", a);
+    printf("%c", a);
 }
 
 
-
 void VirtualMachine::clock(){
-    chrono::steady_clock::time_point time_now = chrono::steady_clock::now(); 
-    cout << "Elapsed time since start:" << chrono::duration_cast<chrono::microseconds>(time_now-time_start).count()<< endl;
+    steady_clock::time_point time_now = steady_clock::now(); 
+    cout << "Microseconds elapsed since start:" << duration_cast<microseconds>(time_now-time_start).count()<< endl;
 
 }
 
