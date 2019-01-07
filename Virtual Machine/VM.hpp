@@ -10,7 +10,8 @@
 //define the default stack size 2^16
 
 #define MAX_PRG    4096
-#define MAX_STACK  1024
+#define MAX_STACK  4096
+#define MAX_HEAP   4096
 #define HLT 0x00
 #define JMP 0x01
 #define JNZ 0x02
@@ -38,6 +39,9 @@
 #define OUT 0x18
 #define CLK 0x2a
 
+#define CNS 0x30
+#define HD  0x31
+#define TL  0x32
 
 typedef uint8_t byte;
 typedef uint32_t word;

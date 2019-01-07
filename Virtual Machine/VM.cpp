@@ -8,11 +8,14 @@ private:
     byte program[MAX_PRG];
     byte stack[MAX_STACK];
     word *wordstack;
+    word heap[MAX_HEAP];
+
 
     bool running;
     int ip;
     int sp;
     int wp;
+    int hp;
     steady_clock::time_point time_start;
 
     void halt();
@@ -42,6 +45,10 @@ private:
     void output();
     void clock();
    
+    void cons();
+    void head();
+    void tail();
+
 public:
 
     VirtualMachine(){
@@ -51,6 +58,7 @@ public:
         ip=-1;
         sp=-1;
         wp=-1;
+        hp=-1;
     }
 
 
@@ -110,6 +118,10 @@ public:
                 case INP:   input();  break;
                 case OUT:   output(); break;
                 case CLK:   clock();  break;
+
+                case CNS:   cons();   break;
+                case HD:    head();   break;
+                case TL:    tail();   break;
                 }
 
         }while(running);
@@ -307,8 +319,42 @@ void VirtualMachine::output(){
 
 void VirtualMachine::clock(){
     steady_clock::time_point time_now = steady_clock::now(); 
-    cout << "Microseconds elapsed since start:" << duration_cast<microseconds>(time_now-time_start).count()<< endl;
+    cout << "Seconds elapsed since start:" << (double) (duration_cast<microseconds>(time_now-time_start).count()/10^9) << endl;
 
+}
+
+
+void VirtualMachine::cons(){
+    word a = wordstack[sp];
+    sp--;
+
+    //FIND NEXT FREE HEAP LOCATION
+    //IF THERE ISN'T ANY FREE LOCATION (hp == end)
+    //CALL THE GARBAGE COLLETCTOR THAT 
+    //WILL RETURN THE FIRST FREE ADDRESS
+    //OF THE HEAP
+
+    int location= hp;
+
+    hp++;
+    heap[hp] = a;
+
+
+    a = wordstack[sp];
+    sp--;
+
+    hp++;
+    heap[hp] = a;
+}
+
+void VirtualMachine::head(){
+    int addr = wordstack[sp];
+    wordstack[sp]=heap[addr];
+}
+
+void VirtualMachine::tail(){
+    int addr = wordstack[sp];
+    wordstack[sp]=heap[addr+1];
 }
 
 int main(int argc,char *argv[]) {
