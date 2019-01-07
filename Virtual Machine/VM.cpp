@@ -6,15 +6,13 @@ using namespace std::chrono;
 class VirtualMachine {
 private:
     byte program[MAX_PRG];
-    byte stack[MAX_STACK];
-    word *wordstack;
+    word stack[MAX_STACK];
     word heap[MAX_HEAP];
 
 
     bool running;
     int ip;
     int sp;
-    int wp;
     int hp;
     steady_clock::time_point time_start;
 
@@ -53,11 +51,9 @@ public:
 
     VirtualMachine(){
         stack[0]=0;
-        wordstack = (word*)stack;
         running=false;    
         ip=-1;
         sp=-1;
-        wp=-1;
         hp=-1;
     }
 
@@ -149,7 +145,7 @@ void VirtualMachine::jump(){
 }
 
 void VirtualMachine::jnz(){
-    byte a = stack[sp];
+    word a = stack[sp];
     sp--;
     if(a!=0)
         jump();
@@ -168,7 +164,7 @@ void VirtualMachine::dup(){
 void VirtualMachine::swap(){
     ip++;
     int diff = program[ip];
-    byte save = stack[diff];
+    word save = stack[diff];
     stack[diff] = stack[sp];
     stack[sp]=save;
 }
@@ -179,14 +175,29 @@ void VirtualMachine::drop(){
 
 
 void VirtualMachine::push4(){
-    push2();
-    push2();
+    ip++;
+    byte a = program[ip];
+    ip++;
+    byte b = program[ip];
+    ip++;
+    byte c = program[ip];
+    ip++;
+    byte d = program[ip];
+
+    stack[sp]=(int)(a+(b<<8)+(c<<16)+(d<<24));
+
     return;
 }
 
 void VirtualMachine::push2(){
-    push1();
-    push1();
+    ip++;
+    byte a = program[ip];
+    ip++;
+    byte b = program[ip];
+
+    sp++;
+    stack[sp]=(int) (a+(b<<8));
+
     return;
 }
 
@@ -195,138 +206,122 @@ void VirtualMachine::push1(){
     ip++;
     byte a = program[ip];
     sp++;
-    stack[sp]=a;
+    stack[sp]=(int)a;
     return;
 }
 
 void VirtualMachine::add(){
-    wp = ((sp+1)/4)-1;
-    wordstack[wp]=wordstack[wp]+wordstack[wp-1];
-    sp = sp-4; 
+    stack[sp-1]=stack[sp]+stack[sp-1];
+    sp--; 
 }
 
 void VirtualMachine::sub(){
-    wp = ((sp+1)/4)-1;
-    wordstack[wp]=wordstack[wp-1]-wordstack[wp];
-    sp = sp-4;
+    stack[sp-1]=stack[sp-1]-stack[sp];
+    sp--;
 
 }
 
 void VirtualMachine::mul(){
-    wp = ((sp+1)/4)-1;
-    wordstack[wp]=wordstack[wp-1]*wordstack[wp];
-    sp = sp-4;
+    stack[sp-1]=stack[sp-1]*stack[sp];
+    sp--;
 }
 
 void VirtualMachine::div(){
-    wp = ((sp+1)/4)-1;
-    wordstack[wp]=wordstack[wp-1]/wordstack[wp];
-    sp = sp-4;
+    stack[sp-1]=stack[sp-1]/stack[sp];
+    sp--;
 
 }
 
 void VirtualMachine::mod(){
-    wp = ((sp+1)/4)-1;
-    wordstack[wp]=wordstack[wp-1]%wordstack[wp];
-    sp = sp-4;
+    stack[sp-1]=stack[sp-1]%stack[sp];
+    sp--;
 }
 
 void VirtualMachine::eq(){
-    wp = ((sp+1)/4)-1;
-    if(wordstack[wp-1]==wordstack[wp])
-        wordstack[wp]=1;
+    if(stack[sp-1]==stack[sp])
+        stack[sp-1]=1;
     else
-        wordstack[wp]=0;
-    sp = sp-4;    
+        stack[sp-1]=0;
+    sp--;    
 }
 
 void VirtualMachine::ne(){
-    wp = ((sp+1)/4)-1;
-    if(wordstack[wp-1]!=wordstack[wp])
-        wordstack[wp]=1;
+    if(stack[sp-1]!=stack[sp])
+        stack[sp-1]=1;
     else
-        wordstack[wp]=0;
-    sp = sp-4;
+        stack[sp-1]=0;
+    sp--;
 }
 
 void VirtualMachine::lt(){
-    wp = ((sp+1)/4)-1;
-    if(wordstack[wp-1]<wordstack[wp])
-        wordstack[wp]=1;
+    if(stack[sp-1]<stack[sp])
+        stack[sp-1]=1;
     else
-        wordstack[wp]=0;
-    sp = sp-4;
+        stack[sp-1]=0;
+    sp--;
 }
 
 void VirtualMachine::gt(){
-    wp = ((sp+1)/4)-1;
-    if(wordstack[wp-1]>wordstack[wp])
-        wordstack[wp]=1;
+    if(stack[sp-1]>stack[sp])
+        stack[sp-1]=1;
     else
-        wordstack[wp]=0;
-    sp = sp-4;
+        stack[sp-1]=0;
+    sp--;
 }
 
 void VirtualMachine::le(){
-    wp = ((sp+1)/4)-1;
-    if(wordstack[wp-1]<=wordstack[wp])
-        wordstack[wp]=1;
+    if(stack[sp-1]<=stack[sp])
+        stack[sp-1]=1;
     else
-        wordstack[wp]=0;
-    sp = sp-4;
+        stack[sp-1]=0;
+    sp--;
 }
 
 void VirtualMachine::ge(){
-    wp = ((sp+1)/4)-1;
-    if(wordstack[wp-1]>=wordstack[wp])
-        wordstack[wp]=1;
+    if(stack[sp-1]>=stack[sp])
+        stack[sp-1]=1;
     else
-        wordstack[wp]=0;
-    sp = sp-4;
+        stack[sp-1]=0;
+    sp--;
 }
 
 void VirtualMachine::bit_not(){
-    wp = ((sp+1)/4)-1;
-    wordstack[wp]=~wordstack[wp];
+    stack[sp]=~stack[sp];
 }
 
 void VirtualMachine::bit_and(){
-    wp = ((sp+1)/4)-1;
-    wordstack[wp]=wordstack[wp-1]&wordstack[wp];
-    sp = sp-4;
+    stack[sp-1]=stack[sp-1]&stack[sp];
+    sp--;
 }
 
 void VirtualMachine::bit_or(){
-    wp = ((sp+1)/4)-1;
-    wordstack[wp]=wordstack[wp-1]|wordstack[wp];
-    sp = sp-4;
+    stack[sp-1]=stack[sp-1]|stack[sp];
+    sp--;
 }
 
 void VirtualMachine::input(){
     byte a;
     scanf("%c", &a);
     sp++;
-    stack[sp]=a;
+    stack[sp]=(int)a;
     return;
 }
 
 void VirtualMachine::output(){
-    byte a = stack[sp];
+    printf("%c", stack[sp]);
     sp--;
-    printf("%c", a);
 }
 
 
 void VirtualMachine::clock(){
     steady_clock::time_point time_now = steady_clock::now(); 
-    cout << "Seconds elapsed since start:" << (double) (duration_cast<microseconds>(time_now-time_start).count()/10^9) << endl;
+    cout << "Microseconds elapsed since start:" << (double) (duration_cast<microseconds>(time_now-time_start).count()/10^9) << endl;
 
 }
 
 
 void VirtualMachine::cons(){
-    word a = wordstack[sp];
-    sp--;
+
 
     //FIND NEXT FREE HEAP LOCATION
     //IF THERE ISN'T ANY FREE LOCATION (hp == end)
@@ -336,11 +331,13 @@ void VirtualMachine::cons(){
 
     int location= hp;
 
+    word a = stack[sp];
+    sp--;
+
     hp++;
     heap[hp] = a;
 
-
-    a = wordstack[sp];
+    a = stack[sp];
     sp--;
 
     hp++;
@@ -348,13 +345,16 @@ void VirtualMachine::cons(){
 }
 
 void VirtualMachine::head(){
-    int addr = wordstack[sp];
-    wordstack[sp]=heap[addr];
+
+    int addr = stack[sp];
+    stack[sp]=heap[addr];
+    sp--; 
 }
 
 void VirtualMachine::tail(){
-    int addr = wordstack[sp];
-    wordstack[sp]=heap[addr+1];
+    int addr = stack[sp];
+    stack[sp]=heap[addr+1];
+    sp--;
 }
 
 int main(int argc,char *argv[]) {

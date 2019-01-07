@@ -43,6 +43,8 @@
 #define HD  0x31
 #define TL  0x32
 
+#define getMarkers(k) (((k) & (3221225472))>>30)
+
 typedef uint8_t byte;
 typedef uint32_t word;
 
