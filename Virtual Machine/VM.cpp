@@ -130,6 +130,10 @@ public:
 
 void VirtualMachine::halt(){
     running = false;
+    printf("\n\nSTACK\n");
+    for(int i=0;i<=sp;i++){
+        printf("%i\n",stack[i]);
+    }
     return;
 }
 
@@ -184,7 +188,9 @@ void VirtualMachine::push4(){
     ip++;
     byte d = program[ip];
 
-    stack[sp]=(int)(a+(b<<8)+(c<<16)+(d<<24));
+
+    sp++;
+    stack[sp]=(a+(b<<8)+(c<<16)+(d<<24));
 
     return;
 }
@@ -196,7 +202,7 @@ void VirtualMachine::push2(){
     byte b = program[ip];
 
     sp++;
-    stack[sp]=(int) (a+(b<<8));
+    stack[sp]=(a+(b<<8));
 
     return;
 }
@@ -206,35 +212,54 @@ void VirtualMachine::push1(){
     ip++;
     byte a = program[ip];
     sp++;
-    stack[sp]=(int)a;
+    stack[sp]=a;
     return;
 }
 
 void VirtualMachine::add(){
-    stack[sp-1]=stack[sp]+stack[sp-1];
+    word b = stack[sp];
+    word a = stack[sp-1];
+    word markerB = getMarkers(b);
+    word markerA = getMarkers(a);
+    stack[sp-1]=((a<<2)+(b<<2))>>2|((markerA|markerB)<<30);
     sp--; 
 }
 
 void VirtualMachine::sub(){
-    stack[sp-1]=stack[sp-1]-stack[sp];
-    sp--;
+    word b = stack[sp];
+    word a = stack[sp-1];
+    word markerB = getMarkers(b);
+    word markerA = getMarkers(a);  
+    stack[sp-1]=((a<<2)-(b<<2))>>2|((markerA|markerB)<<30);
+    sp--; 
 
 }
 
 void VirtualMachine::mul(){
-    stack[sp-1]=stack[sp-1]*stack[sp];
-    sp--;
+    word b = stack[sp];
+    word a = stack[sp-1];
+    word markerB = getMarkers(b);
+    word markerA = getMarkers(a);  
+    stack[sp-1]=((a<<2)*(b<<2))>>2|((markerA|markerB)<<30);
+    sp--; 
 }
 
 void VirtualMachine::div(){
-    stack[sp-1]=stack[sp-1]/stack[sp];
-    sp--;
-
+    word b = stack[sp];
+    word a = stack[sp-1];
+    word markerB = getMarkers(b);
+    word markerA = getMarkers(a);  
+    stack[sp-1]=((a<<2)/(b<<2))>>2|((markerA|markerB)<<30);
+    sp--; 
 }
 
 void VirtualMachine::mod(){
-    stack[sp-1]=stack[sp-1]%stack[sp];
-    sp--;
+    word b = stack[sp];
+    word a = stack[sp-1];
+    word markerB = getMarkers(b);
+    word markerA = getMarkers(a);  
+    stack[sp-1]=((a<<2)%(b<<2))>>2|((markerA|markerB)<<30);
+    sp--; 
 }
 
 void VirtualMachine::eq(){
@@ -286,29 +311,38 @@ void VirtualMachine::ge(){
 }
 
 void VirtualMachine::bit_not(){
-    stack[sp]=~stack[sp];
+    word a = stack[sp];
+    word markerA = getMarkers(a);
+    stack[sp]=(~(a>>2))<<2|(markerA<<30); 
 }
 
 void VirtualMachine::bit_and(){
-    stack[sp-1]=stack[sp-1]&stack[sp];
-    sp--;
+    word b = stack[sp];
+    word a = stack[sp-1];
+    word markerB = getMarkers(b);
+    word markerA = getMarkers(a);  
+    stack[sp-1]=((a<<2)&(b<<2))>>2|((markerA|markerB)<<30);
+    sp--; 
 }
 
 void VirtualMachine::bit_or(){
-    stack[sp-1]=stack[sp-1]|stack[sp];
-    sp--;
+    word b = stack[sp];
+    word a = stack[sp-1];
+    word markerB = getMarkers(b);
+    word markerA = getMarkers(a);  
+    stack[sp-1]=((a<<2)|(b<<2))>>2|((markerA|markerB)<<30);
+    sp--; 
 }
 
 void VirtualMachine::input(){
     byte a;
     scanf("%c", &a);
     sp++;
-    stack[sp]=(int)a;
-    return;
+    stack[sp] = (word)a;
 }
 
 void VirtualMachine::output(){
-    printf("%c", stack[sp]);
+    printf("%c\n", stack[sp]);
     sp--;
 }
 
