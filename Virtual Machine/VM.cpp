@@ -86,7 +86,6 @@ public:
         do{
             ip++;
             op = program[ip];
-            printf("%04x\n", op);
             switch(op){
                 case HLT:   halt();   break;
                 case JMP:   jump();   break;
@@ -118,8 +117,8 @@ public:
                 case CNS:   cons();   break;
                 case HD:    head();   break;
                 case TL:    tail();   break;
-                }
 
+                }
         }while(running);
     }
 };
@@ -130,35 +129,32 @@ public:
 
 void VirtualMachine::halt(){
     running = false;
-    printf("\n\nSTACK\n");
-    for(int i=0;i<=sp;i++){
-        printf("%i\n",stack[i]);
-    }
-    return;
 }
 
 void VirtualMachine::jump(){
     ip++;
     byte a = program[ip];
+
     ip++;
     byte b = program[ip];
 
-    int offset= (int) a + (int) b * 16;
-    ip = offset;
-    return;
+    ip = (a | b<<8)-1;
 }
 
 void VirtualMachine::jnz(){
     word a = stack[sp];
     sp--;
-    if(a!=0)
+    if(a!=0){
         jump();
+    }else{
+        ip = ip+2;
+    }
 }
 
 
 void VirtualMachine::dup(){
     ip++;
-    int diff = program[ip];
+    int diff = sp-program[ip];
     sp++;
     stack[sp]=stack[diff];
 }
@@ -213,7 +209,6 @@ void VirtualMachine::push1(){
     byte a = program[ip];
     sp++;
     stack[sp]=a;
-    return;
 }
 
 void VirtualMachine::add(){
@@ -342,14 +337,15 @@ void VirtualMachine::input(){
 }
 
 void VirtualMachine::output(){
-    printf("%c\n", stack[sp]);
+    printf("%c", stack[sp]);
     sp--;
 }
 
 
 void VirtualMachine::clock(){
     steady_clock::time_point time_now = steady_clock::now(); 
-    cout << "Microseconds elapsed since start:" << (double) (duration_cast<microseconds>(time_now-time_start).count()/10^9) << endl;
+    double time_elapsed= duration_cast<microseconds>(time_now-time_start).count();
+    printf("%0.6lf\n",time_elapsed/(1000000));
 
 }
 
