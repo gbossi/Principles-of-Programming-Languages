@@ -1,7 +1,64 @@
 #include "VM.hpp"
 
+
+
 using namespace std;
 using namespace std::chrono;
+
+class GarbageCollector{
+private:
+    word* stack;
+    word* heap;
+    int hp;
+
+    int collectGarbage(){
+        int i,k;
+        printf("Into the stack \n");
+        
+        for(i=0;i<MAX_STACK;i++){
+            if(stack[i]>=ST_ADDRESS){ 
+                k = stack[i]-ST_ADDRESS;
+                heap[k] = heap[k] | ST_ADDRESS; 
+            }
+        }
+        cin.ignore();
+        printf("Now let's clean it up \n");
+
+        for(i=0;i<MAX_HEAP;i=i+2){
+            if(heap[i]<ST_ADDRESS){
+                heap[i]=0;
+                heap[i+1]=0;
+            }else
+                heap[i]=heap[i]-ST_ADDRESS;
+        }
+        return 0;
+    }
+
+public:
+
+    void initialize(word (&VMstack)[MAX_STACK],word (&VMheap)[MAX_HEAP]){
+        stack = VMstack;
+        heap = VMheap;
+        hp = 0;
+        for(int i=0;i<MAX_HEAP;i++)
+            heap[i]=0;
+        for(int i=0;i<MAX_STACK;i++)
+            stack[i]=0;
+    }
+
+    int getFreeAddress(){
+        if(hp>=MAX_HEAP)
+            hp=collectGarbage();
+        
+        for(;hp<MAX_HEAP;hp=hp+2)
+            if(heap[hp]==0) 
+                return hp;
+
+        printf("%d\n", hp); 
+        return getFreeAddress();
+    }    
+};
+
 
 class VirtualMachine {
 private:
@@ -9,11 +66,11 @@ private:
     word stack[MAX_STACK];
     word heap[MAX_HEAP];
 
+    GarbageCollector gc;
 
     bool running;
     int ip;
     int sp;
-    int hp;
     steady_clock::time_point time_start;
 
     void halt();
@@ -54,7 +111,7 @@ public:
         running=false;    
         ip=-1;
         sp=-1;
-        hp=-1;
+        gc.initialize(stack,heap);
     }
 
 
@@ -113,11 +170,9 @@ public:
                 case INP:   input();  break;
                 case OUT:   output(); break;
                 case CLK:   clock();  break;
-
                 case CNS:   cons();   break;
                 case HD:    head();   break;
                 case TL:    tail();   break;
-
                 }
         }while(running);
     }
@@ -226,6 +281,7 @@ void VirtualMachine::sub(){
     word markerB = getMarkers(b);
     word markerA = getMarkers(a);  
     stack[sp-1]=((a<<2)-(b<<2))>>2|((markerA|markerB)<<30);
+    printf("%d instead of %d - %d\n",stack[sp-1],a,b);
     sp--; 
 
 }
@@ -351,41 +407,28 @@ void VirtualMachine::clock(){
 
 
 void VirtualMachine::cons(){
+    int loc = gc.getFreeAddress();
 
-
-    //FIND NEXT FREE HEAP LOCATION
-    //IF THERE ISN'T ANY FREE LOCATION (hp == end)
-    //CALL THE GARBAGE COLLETCTOR THAT 
-    //WILL RETURN THE FIRST FREE ADDRESS
-    //OF THE HEAP
-
-    int location= hp;
-
-    word a = stack[sp];
+    heap[loc] = stack[sp];
     sp--;
-
-    hp++;
-    heap[hp] = a;
-
-    a = stack[sp];
-    sp--;
-
-    hp++;
-    heap[hp] = a;
+    heap[loc+1] = stack[sp];
+    
+    stack[sp]= loc + ST_ADDRESS;    
 }
 
 void VirtualMachine::head(){
-
-    int addr = stack[sp];
+    int addr = ((stack[sp]<<2)>>2);
     stack[sp]=heap[addr];
-    sp--; 
 }
 
 void VirtualMachine::tail(){
-    int addr = stack[sp];
+    int addr = ((stack[sp]<<2)>>2);
     stack[sp]=heap[addr+1];
-    sp--;
 }
+
+
+
+
 
 int main(int argc,char *argv[]) {
     if(argc!=2){

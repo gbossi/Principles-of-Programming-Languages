@@ -38,10 +38,11 @@
 #define INP 0x17
 #define OUT 0x18
 #define CLK 0x2a
-
 #define CNS 0x30
 #define HD  0x31
 #define TL  0x32
+
+#define ST_ADDRESS 0x40000000
 
 #define getMarkers(k) (((k) & (3<<30))>>30)
 
