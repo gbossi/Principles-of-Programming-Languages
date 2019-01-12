@@ -10,8 +10,8 @@
 //define the default stack size 2^16
 
 #define MAX_PRG    4096
-#define MAX_STACK  4096
-#define MAX_HEAP   4096
+#define MAX_STACK  32
+#define MAX_HEAP   32
 #define HLT 0x00
 #define JMP 0x01
 #define JNZ 0x02
@@ -43,6 +43,8 @@
 #define TL  0x32
 
 #define ST_ADDRESS 0x40000000
+#define HP_ADDRESS 0x80000000
+#define HEAP_INIT 2
 
 #define getMarkers(k) (((k) & (3<<30))>>30)
 

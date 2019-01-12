@@ -13,29 +13,46 @@ private:
 
     int collectGarbage(){
         int i,k;
-        printf("Into the stack \n");
-        
+
+        printf("\nSTACK\n");
         for(i=0;i<MAX_STACK;i++){
-            if(stack[i]>=ST_ADDRESS){ 
-                k = stack[i]-ST_ADDRESS;
-                heap[k] = heap[k] | ST_ADDRESS; 
+            printf("%d  ",stack[i]);
+        }
+        printf("\nHEAP\n");
+        for(i=0;i<MAX_STACK;i=i+2){
+            printf("%d - %d \n",heap[i],heap[i+1]);
+        }
+
+        for(i=0;i<MAX_STACK;i++){
+            k = stack[i]-ST_ADDRESS;
+            if(k>=0){ 
+                heap[k] = heap[k] + HP_ADDRESS;
+                printf("%d\t", k);
             }
         }
-        cin.ignore();
-        printf("Now let's clean it up \n");
 
-        for(i=0;i<MAX_HEAP;i=i+2){
-            if(heap[i]<ST_ADDRESS){
+        printf("\nHEAP\n");
+        for(i=0;i<MAX_STACK;i=i+2){
+            printf("%d - %d \n",heap[i],heap[i+1]);
+        }
+
+        for(i=0;i<MAX_HEAP;i++){
+            k=heap[i]-HP_ADDRESS;
+            if(k>0){
+                heap[i]=k;
+            }else{
                 heap[i]=0;
-                heap[i+1]=0;
-            }else
-                heap[i]=heap[i]-ST_ADDRESS;
+            }
+        }
+
+        printf("\nHEAP\n");
+        for(i=0;i<MAX_STACK;i++){
+            printf("%d - %d \n",heap[i],heap[i+1]);
         }
         return 0;
     }
 
 public:
-
     void initialize(word (&VMstack)[MAX_STACK],word (&VMheap)[MAX_HEAP]){
         stack = VMstack;
         heap = VMheap;
@@ -50,11 +67,11 @@ public:
         if(hp>=MAX_HEAP)
             hp=collectGarbage();
         
-        for(;hp<MAX_HEAP;hp=hp+2)
-            if(heap[hp]==0) 
+        for(;hp<MAX_HEAP;hp=hp+2){
+            if(heap[hp]==0){
                 return hp;
-
-        printf("%d\n", hp); 
+            }
+        }
         return getFreeAddress();
     }    
 };
@@ -99,7 +116,6 @@ private:
     void input();
     void output();
     void clock();
-   
     void cons();
     void head();
     void tail();
@@ -242,8 +258,6 @@ void VirtualMachine::push4(){
 
     sp++;
     stack[sp]=(a+(b<<8)+(c<<16)+(d<<24));
-
-    return;
 }
 
 void VirtualMachine::push2(){
@@ -254,8 +268,6 @@ void VirtualMachine::push2(){
 
     sp++;
     stack[sp]=(a+(b<<8));
-
-    return;
 }
 
 
@@ -269,19 +281,14 @@ void VirtualMachine::push1(){
 void VirtualMachine::add(){
     word b = stack[sp];
     word a = stack[sp-1];
-    word markerB = getMarkers(b);
-    word markerA = getMarkers(a);
-    stack[sp-1]=((a<<2)+(b<<2))>>2|((markerA|markerB)<<30);
+    stack[sp-1]=a+b;
     sp--; 
 }
 
 void VirtualMachine::sub(){
     word b = stack[sp];
     word a = stack[sp-1];
-    word markerB = getMarkers(b);
-    word markerA = getMarkers(a);  
-    stack[sp-1]=((a<<2)-(b<<2))>>2|((markerA|markerB)<<30);
-    printf("%d instead of %d - %d\n",stack[sp-1],a,b);
+    stack[sp-1]=a-b;
     sp--; 
 
 }
@@ -289,27 +296,21 @@ void VirtualMachine::sub(){
 void VirtualMachine::mul(){
     word b = stack[sp];
     word a = stack[sp-1];
-    word markerB = getMarkers(b);
-    word markerA = getMarkers(a);  
-    stack[sp-1]=((a<<2)*(b<<2))>>2|((markerA|markerB)<<30);
+    stack[sp-1]=a*b;
     sp--; 
 }
 
 void VirtualMachine::div(){
     word b = stack[sp];
     word a = stack[sp-1];
-    word markerB = getMarkers(b);
-    word markerA = getMarkers(a);  
-    stack[sp-1]=((a<<2)/(b<<2))>>2|((markerA|markerB)<<30);
+    stack[sp-1]=a/b;
     sp--; 
 }
 
 void VirtualMachine::mod(){
     word b = stack[sp];
     word a = stack[sp-1];
-    word markerB = getMarkers(b);
-    word markerA = getMarkers(a);  
-    stack[sp-1]=((a<<2)%(b<<2))>>2|((markerA|markerB)<<30);
+    stack[sp-1]=a%b;
     sp--; 
 }
 
@@ -363,25 +364,20 @@ void VirtualMachine::ge(){
 
 void VirtualMachine::bit_not(){
     word a = stack[sp];
-    word markerA = getMarkers(a);
-    stack[sp]=(~(a>>2))<<2|(markerA<<30); 
+    stack[sp]=~a; 
 }
 
 void VirtualMachine::bit_and(){
     word b = stack[sp];
-    word a = stack[sp-1];
-    word markerB = getMarkers(b);
-    word markerA = getMarkers(a);  
-    stack[sp-1]=((a<<2)&(b<<2))>>2|((markerA|markerB)<<30);
+    word a = stack[sp-1]; 
+    stack[sp-1]=a&b;
     sp--; 
 }
 
 void VirtualMachine::bit_or(){
     word b = stack[sp];
     word a = stack[sp-1];
-    word markerB = getMarkers(b);
-    word markerA = getMarkers(a);  
-    stack[sp-1]=((a<<2)|(b<<2))>>2|((markerA|markerB)<<30);
+    stack[sp-1]=a|b;
     sp--; 
 }
 
@@ -407,23 +403,22 @@ void VirtualMachine::clock(){
 
 
 void VirtualMachine::cons(){
-    int loc = gc.getFreeAddress();
-
-    heap[loc] = stack[sp];
+    int addr = gc.getFreeAddress();
+    heap[addr] = stack[sp];
     sp--;
-    heap[loc+1] = stack[sp];
-    
-    stack[sp]= loc + ST_ADDRESS;    
+    heap[addr+1] = stack[sp];
+    stack[sp]= addr + ST_ADDRESS; 
 }
 
 void VirtualMachine::head(){
-    int addr = ((stack[sp]<<2)>>2);
-    stack[sp]=heap[addr];
+    int addr = stack[sp] - ST_ADDRESS;
+    stack[sp]= heap[addr+1];
+
 }
 
 void VirtualMachine::tail(){
-    int addr = ((stack[sp]<<2)>>2);
-    stack[sp]=heap[addr+1];
+    int addr = stack[sp] - ST_ADDRESS;
+    stack[sp]= heap[addr];
 }
 
 
