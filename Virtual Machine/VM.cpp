@@ -8,71 +8,60 @@ using namespace std::chrono;
 class GarbageCollector{
 private:
     word* stack;
-    word* heap;
+    cell* heap;
     int hp;
 
-    int collectGarbage(){
+    void markTheChain(int current){
+        if(heap[current].mark)
+            return; 
+        heap[current].mark=true;
+        
+        if(heap[current].head>=ST_ADDRESS)
+            markTheChain(heap[current].head-ST_ADDRESS);
+        if(heap[current].tail>=ST_ADDRESS)
+            markTheChain(heap[current].tail-ST_ADDRESS);
+
+    }
+
+
+
+    int collectGarbage(int sp){
         int i,k;
-
-        printf("\nSTACK\n");
-        for(i=0;i<MAX_STACK;i++){
-            printf("%d  ",stack[i]);
-        }
-        printf("\nHEAP\n");
-        for(i=0;i<MAX_STACK;i=i+2){
-            printf("%d - %d \n",heap[i],heap[i+1]);
-        }
-
-        for(i=0;i<MAX_STACK;i++){
+        for(i=0;i<=sp;i++){
             k = stack[i]-ST_ADDRESS;
-            if(k>=0){ 
-                heap[k] = heap[k] + HP_ADDRESS;
-                printf("%d\t", k);
+            if(k>=0){
+                markTheChain(k);
             }
-        }
-
-        printf("\nHEAP\n");
-        for(i=0;i<MAX_STACK;i=i+2){
-            printf("%d - %d \n",heap[i],heap[i+1]);
         }
 
         for(i=0;i<MAX_HEAP;i++){
-            k=heap[i]-HP_ADDRESS;
-            if(k>0){
-                heap[i]=k;
-            }else{
-                heap[i]=0;
-            }
-        }
-
-        printf("\nHEAP\n");
-        for(i=0;i<MAX_STACK;i++){
-            printf("%d - %d \n",heap[i],heap[i+1]);
+            if(!heap[i].mark)
+                heap[i].used=false;
+            else
+                heap[i].mark=false;
+            
         }
         return 0;
     }
 
 public:
-    void initialize(word (&VMstack)[MAX_STACK],word (&VMheap)[MAX_HEAP]){
+    void initialize(word (&VMstack)[MAX_STACK],cell (&VMheap)[MAX_HEAP]){
         stack = VMstack;
         heap = VMheap;
         hp = 0;
-        for(int i=0;i<MAX_HEAP;i++)
-            heap[i]=0;
-        for(int i=0;i<MAX_STACK;i++)
-            stack[i]=0;
     }
 
-    int getFreeAddress(){
+    int getFreeAddress(int sp){
         if(hp>=MAX_HEAP)
-            hp=collectGarbage();
+            hp=collectGarbage(sp);
         
-        for(;hp<MAX_HEAP;hp=hp+2){
-            if(heap[hp]==0){
+        for(;hp<MAX_HEAP;hp++){
+            if(!heap[hp].used){
+                heap[hp].used = true;
                 return hp;
             }
         }
-        return getFreeAddress();
+        return getFreeAddress(sp);
     }    
 };
 
@@ -81,7 +70,7 @@ class VirtualMachine {
 private:
     byte program[MAX_PRG];
     word stack[MAX_STACK];
-    word heap[MAX_HEAP];
+    cell heap[MAX_HEAP];
 
     GarbageCollector gc;
 
@@ -127,7 +116,11 @@ public:
         running=false;    
         ip=-1;
         sp=-1;
+        
         gc.initialize(stack,heap);
+
+        for(int i=0;i<MAX_STACK;i++)
+            stack[i]=0;
     }
 
 
@@ -234,7 +227,7 @@ void VirtualMachine::dup(){
 
 void VirtualMachine::swap(){
     ip++;
-    int diff = program[ip];
+    int diff = sp-program[ip];
     word save = stack[diff];
     stack[diff] = stack[sp];
     stack[sp]=save;
@@ -363,8 +356,7 @@ void VirtualMachine::ge(){
 }
 
 void VirtualMachine::bit_not(){
-    word a = stack[sp];
-    stack[sp]=~a; 
+    stack[sp]=~stack[sp];
 }
 
 void VirtualMachine::bit_and(){
@@ -403,22 +395,22 @@ void VirtualMachine::clock(){
 
 
 void VirtualMachine::cons(){
-    int addr = gc.getFreeAddress();
-    heap[addr] = stack[sp];
+    int addr = gc.getFreeAddress(sp);
+    heap[addr].tail = stack[sp];
+    heap[addr].head = stack[sp-1];
     sp--;
-    heap[addr+1] = stack[sp];
     stack[sp]= addr + ST_ADDRESS; 
 }
 
 void VirtualMachine::head(){
     int addr = stack[sp] - ST_ADDRESS;
-    stack[sp]= heap[addr+1];
+    stack[sp]= heap[addr].head;
 
 }
 
 void VirtualMachine::tail(){
     int addr = stack[sp] - ST_ADDRESS;
-    stack[sp]= heap[addr];
+    stack[sp]= heap[addr].tail;
 }
 
 

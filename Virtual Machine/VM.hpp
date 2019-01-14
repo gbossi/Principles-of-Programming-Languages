@@ -10,8 +10,8 @@
 //define the default stack size 2^16
 
 #define MAX_PRG    4096
-#define MAX_STACK  32
-#define MAX_HEAP   32
+#define MAX_STACK  4096
+#define MAX_HEAP   4096
 #define HLT 0x00
 #define JMP 0x01
 #define JNZ 0x02
@@ -50,5 +50,12 @@
 
 typedef uint8_t byte;
 typedef uint32_t word;
+
+struct cell{
+    uint32_t head=0;
+    uint32_t tail=0;
+    bool mark=false;
+    bool used=false;
+};
 
 #endif
