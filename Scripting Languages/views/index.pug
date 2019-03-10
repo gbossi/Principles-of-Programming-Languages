@@ -1,0 +1,55 @@
+//
+//  Exercise 9: Scripting languages
+//  Part 1: Server side scripting
+//  Programming Languages 2
+//  Michael Beyer, Giacomo Bossi
+//
+
+doctype html
+html(lang="en")
+  head
+    title Find the longest palindrome!
+    style
+      include style.css
+  body
+    h1 Find the longest palindrome!
+
+    p.
+      I'll give you a string of (up to 1000) letters
+      and I need you to do one simple thing:
+    p.
+      Find the <span class="emph">least</span> possible number of letters that,
+      if removed from the given string, what remains is a
+      <span class="emph">palindrome</span>.
+      
+    p.
+      <span class="question">Question #{questionNr}</span>:
+      length #{questionLength} <code class="block" id="question">#{question}</code>
+
+    //- add form elements based on current state
+    case answerState
+          
+      when 'correct'
+        p(class="right") Right!  :-)
+        form(action="/pl2/longestPal" id="r" name="r" method="post")
+          input(class="button" type="submit" name="again" id="again" value="Continue!" autofocus)
+
+      when 'wrong'
+        p(class="wrong") Wrong!  Try again...  :-(
+        form(action="/pl2/longestPal" id="r" name="r" method="post")
+          input(class="button" type="submit" name="again" id="again" value="Continue!" autofocus)
+            
+      when 'restart'
+        p(class="right") Right!  :-)
+        form(action="/pl2/longestPal" id="r" name="r" method="post")
+          input(class="button" type="submit" name="restart" id="restart" value="Restart Game!" autofocus)
+            
+      default
+        form(action="/pl2/longestPal" id="f" name="f" method="post")
+          | What is the least number of characters you need to remove?
+          table(border="0" cellspacing="3")
+            tr
+              td 
+                input(type="text" class="box" name="answer" id="answer" autofocus)
+              td
+                input(type="submit" class="button" name="submit" id="submit" value="Submit!")
